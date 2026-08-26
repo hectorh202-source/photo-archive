@@ -10,7 +10,7 @@ import type { Archiver } from "archiver";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const createArchive = require("archiver") as (format: string, options?: Record<string, unknown>) => Archiver;
 import { env } from "../config/env";
-import type { ServiceTitanConfig } from "../db/clientSettings";
+import { getRunTuning, type ServiceTitanConfig, type RunTuning } from "../db/clientSettings";
 import { requireServiceTitanConfig, describeError, errorStatus } from "./httpClient";
 import { fetchAllPages } from "./paginate";
 import { listJobAttachments, downloadJobAttachment, classifyAttachment, looksLikeImageBytes, isImageContentType, sniffFileExtension, type JobAttachment } from "./jobAttachments";
@@ -42,42 +42,48 @@ import {
 
 const exportsDir = path.join(env.ARCHIVE_PATH ?? path.join(path.dirname(env.DATABASE_PATH), "archives"));
 
-// ServiceTitan rate-limits per app, and this is the one feature capable of
-// spending that budget carelessly. A steady ~5 requests/second leaves room
-// for live calls (customer lookups, bookings) happening at the same time —
-// those matter more than an export finishing ten minutes sooner.
-const REQUEST_SPACING_MS = 200;
-const MAX_RETRIES = 4;
-
-// A photo bigger than this is not a photo. Guards a single bad row from
-// filling the volume.
-const MAX_FILE_BYTES = 60 * 1024 * 1024;
-
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-let lastRequestAt = 0;
+export type Paced = <T>(work: () => Promise<T>) => Promise<T>;
 
-async function paced<T>(work: () => Promise<T>): Promise<T> {
-  const wait = REQUEST_SPACING_MS - (Date.now() - lastRequestAt);
-  if (wait > 0) await sleep(wait);
-  lastRequestAt = Date.now();
+// ServiceTitan rate-limits per app, and this is the one feature capable of
+// spending that budget carelessly — so the rate is a per-client setting, and
+// the clock it throttles against belongs to the run rather than the module.
+// Two clients archiving at once are two separate tenants with two separate
+// budgets; a shared global would make each unfairly slow the other.
+function createPacer(tuning: RunTuning): Paced {
+  const spacingMs = Math.max(20, Math.round(1000 / Math.max(0.2, tuning.requestsPerSecond)));
+  let lastRequestAt = 0;
 
-  let lastError: unknown;
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      return await work();
-    } catch (error) {
-      lastError = error;
-      const status = errorStatus(error);
-      // 429 and 5xx are worth waiting out; a 401/403/404 will say the same
-      // thing however many times it is asked.
-      if (status !== 429 && status !== null && status < 500) throw error;
-      const backoff = Math.min(30_000, 1000 * 2 ** attempt);
-      await sleep(backoff);
-      lastRequestAt = Date.now();
+  return async function paced<T>(work: () => Promise<T>): Promise<T> {
+    const wait = spacingMs - (Date.now() - lastRequestAt);
+    if (wait > 0) await sleep(wait);
+    lastRequestAt = Date.now();
+
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= tuning.maxRetries; attempt++) {
+      try {
+        return await work();
+      } catch (error) {
+        lastError = error;
+        const status = errorStatus(error);
+        // 429 and 5xx are worth waiting out; a 401/403/404 will say the same
+        // thing however many times it is asked.
+        if (status !== 429 && status !== null && status < 500) throw error;
+        const backoff = Math.min(30_000, 1000 * 2 ** attempt);
+        await sleep(backoff);
+        lastRequestAt = Date.now();
+      }
     }
-  }
-  throw lastError;
+    throw lastError;
+  };
+}
+
+// {customer}, {date}, {jobNumber} and {n} are the tokens the Settings tab
+// documents. An unknown token is left alone rather than blanked, so a typo
+// shows up in a filename instead of silently deleting part of the name.
+function applyTemplate(template: string, tokens: Record<string, string>): string {
+  return template.replace(/\{(customer|date|jobNumber|n)\}/g, (match, key: string) => tokens[key] ?? match);
 }
 
 export interface MonthRange {
@@ -129,6 +135,7 @@ async function listJobsForMonth(
   config: ServiceTitanConfig,
   filters: RunFilters,
   range: MonthRange,
+  paced: Paced,
 ): Promise<STJob[]> {
   return paced(() =>
     fetchAllPages<STJob>(config, `/jpm/v2/tenant/${config.tenantId}/jobs`, jobQueryParams(filters, range), {
@@ -161,13 +168,15 @@ const ASSUMED_BYTES_PER_PHOTO = 300 * 1024;
 
 export async function estimateRun(clientId: number, filters: RunFilters): Promise<RunEstimate> {
   const config = requireServiceTitanConfig(clientId);
+  const tuning = getRunTuning(clientId);
+  const paced = createPacer(tuning);
   const ranges = monthsBetween(filters.from, filters.to);
   const warnings: string[] = [];
   const allJobs: STJob[] = [];
 
   for (const range of ranges) {
     try {
-      allJobs.push(...(await listJobsForMonth(config, filters, range)));
+      allJobs.push(...(await listJobsForMonth(config, filters, range, paced)));
     } catch (error) {
       warnings.push(`${range.month}: ${describeError(error)}`);
     }
@@ -184,7 +193,9 @@ export async function estimateRun(clientId: number, filters: RunFilters): Promis
   for (const job of sample) {
     try {
       const listing = await paced(() => listJobAttachments(config, String(job.id)));
-      const photos = listing.attachments.filter((a) => classifyAttachment(a) !== "other").length;
+      const photos = listing.attachments.filter(
+        (a) => tuning.contents === "attachments" || classifyAttachment(a) !== "other",
+      ).length;
       photosInSample += photos;
       if (photos > 0) jobsWithPhotos++;
       sampled++;
@@ -204,7 +215,7 @@ export async function estimateRun(clientId: number, filters: RunFilters): Promis
     photosInSample,
     estimatedPhotos,
     estimatedBytes: estimatedPhotos * ASSUMED_BYTES_PER_PHOTO,
-    estimatedMinutes: Math.ceil((requests * REQUEST_SPACING_MS) / 60_000),
+    estimatedMinutes: Math.ceil(requests / Math.max(0.2, tuning.requestsPerSecond) / 60),
     jobsWithPhotosRate: sampled > 0 ? jobsWithPhotos / sampled : 0,
     warnings,
   };
@@ -224,14 +235,21 @@ function jobDateLabel(job: STJob): string {
   return Number.isNaN(date.getTime()) ? "undated" : date.toISOString().slice(0, 10);
 }
 
-// "89496 - Dana Whitfield - 2026-08-19" — the job number first so a month's
-// folders sort the way the office thinks about jobs, then who and when.
-function jobFolderName(job: STJob, customerName: string | null): string {
-  const parts = [String(job.jobNumber ?? job.id), customerName ?? `Customer ${job.customerId ?? "unknown"}`, jobDateLabel(job)];
-  return sanitizeSegment(parts.join(" - "));
+// Defaults to "89496 - Dana Whitfield - 2026-08-19": the job number first so
+// a month's folders sort the way the office thinks about jobs, then who and
+// when. The template is per-client because some offices file by customer.
+function jobFolderName(job: STJob, customerName: string | null, template: string): string {
+  return sanitizeSegment(
+    applyTemplate(template, {
+      jobNumber: String(job.jobNumber ?? job.id),
+      customer: customerName ?? `Customer ${job.customerId ?? "unknown"}`,
+      date: jobDateLabel(job),
+      n: "",
+    }),
+  );
 }
 
-async function fetchCustomerName(config: ServiceTitanConfig, customerId: unknown): Promise<string | null> {
+async function fetchCustomerName(config: ServiceTitanConfig, customerId: unknown, paced: Paced): Promise<string | null> {
   if (typeof customerId !== "number") return null;
   try {
     const customer = await paced(() =>
@@ -257,6 +275,8 @@ async function buildMonthZip(
   runId: number,
   jobs: STJob[],
   filePath: string,
+  tuning: RunTuning,
+  paced: Paced,
   onProgress: (delta: { jobsDone: number; photos: number; bytes: number }) => void,
 ): Promise<MonthResult> {
   const output = fs.createWriteStream(filePath);
@@ -282,14 +302,18 @@ async function buildMonthZip(
       continue;
     }
 
-    const candidates = listing.attachments.filter((a) => classifyAttachment(a) !== "other");
+    // "attachments" keeps the generated invoice and estimate PDFs; "photos"
+    // leaves them behind without spending a download on them.
+    const candidates = listing.attachments.filter(
+      (a) => tuning.contents === "attachments" || classifyAttachment(a) !== "other",
+    );
     if (candidates.length === 0) {
       onProgress({ jobsDone: 1, photos: 0, bytes: 0 });
       continue;
     }
 
-    const customerName = await fetchCustomerName(config, job.customerId);
-    const folder = jobFolderName(job, customerName);
+    const customerName = await fetchCustomerName(config, job.customerId, paced);
+    const folder = jobFolderName(job, customerName, tuning.jobFolderTemplate);
     const dateLabel = jobDateLabel(job);
     let position = 0;
     let addedForJob = 0;
@@ -301,15 +325,29 @@ async function buildMonthZip(
         const kind = classifyAttachment(attachment);
         const isImage =
           kind === "image" || (kind === "unknown" && (isImageContentType(file.contentType) || looksLikeImageBytes(file.data)));
-        if (!isImage) continue;
-        if (file.data.length > MAX_FILE_BYTES) {
-          notes.push(`Job ${job.jobNumber ?? job.id}: skipped a ${Math.round(file.data.length / 1024 / 1024)} MB file`);
+        if (tuning.contents !== "attachments" && !isImage) continue;
+        if (file.data.length > tuning.maxFileMb * 1024 * 1024) {
+            notes.push(
+            `Job ${job.jobNumber ?? job.id}: skipped a ${Math.round(file.data.length / 1024 / 1024)} MB file (over the ${tuning.maxFileMb} MB limit)`,
+          );
           continue;
         }
         position++;
         const label = customerName ?? `Job ${job.jobNumber ?? job.id}`;
         const extension = sniffFileExtension(file.data) ?? ".jpg";
-        const name = `${sanitizeSegment(`${label} - ${dateLabel} - ${String(position).padStart(3, "0")}`)}${extension}`;
+        // A document keeps the name ServiceTitan gave it — "Invoice_89496_
+        // signed" already says what it is — while a photo, whose stored name
+        // is a GUID, gets the readable one.
+        const readable = applyTemplate(tuning.photoNameTemplate, {
+          customer: label,
+          date: dateLabel,
+          jobNumber: String(job.jobNumber ?? job.id),
+          n: String(position).padStart(3, "0"),
+        });
+        const original = attachment.originalFileName ?? attachment.fileName ?? `file-${position}`;
+        const name = isImage
+          ? `${sanitizeSegment(readable)}${extension}`
+          : `${String(position).padStart(3, "0")} - ${sanitizeSegment(original)}`;
         archive.append(file.data, { name: `${folder}/${name}` });
         result.photos++;
         result.bytes += file.data.length;
@@ -327,16 +365,18 @@ async function buildMonthZip(
   // Every skipped or failed file, named. A batch this size will always have
   // some, and silence about them is what turns "we exported the year" into a
   // claim nobody can check.
-  archive.append(
-    [
+  if (tuning.includeManifest) {
+    archive.append(
+      [
       `Photos for ${jobs.length} job${jobs.length === 1 ? "" : "s"}.`,
       `${result.photos} photos from ${result.jobs} jobs had files; the rest had none.`,
       "",
       notes.length > 0 ? "Problems:" : "No problems.",
       ...notes.map((n) => `  - ${n}`),
     ].join("\n"),
-    { name: "README.txt" },
-  );
+      { name: "README.txt" },
+    );
+  }
 
   await archive.finalize();
   await closed;
@@ -361,6 +401,11 @@ export async function executeRun(
   filters: RunFilters,
 ): Promise<void> {
   const config = requireServiceTitanConfig(clientId);
+  // Read once at the start: a settings change mid-run would otherwise apply
+  // to some months and not others, which is the kind of inconsistency nobody
+  // would think to look for later.
+  const tuning = getRunTuning(clientId);
+  const paced = createPacer(tuning);
   fs.mkdirSync(exportsDir, { recursive: true });
   const ranges = monthsBetween(filters.from, filters.to);
 
@@ -371,7 +416,7 @@ export async function executeRun(
 
   const perMonth: { range: MonthRange; jobs: STJob[]; fileId: number; filePath: string }[] = [];
   for (const range of ranges) {
-    const jobs = await listJobsForMonth(config, filters, range);
+    const jobs = await listJobsForMonth(config, filters, range, paced);
     const filePath = path.join(exportsDir, `run-${runId}-photos-${range.month}.zip`);
     perMonth.push({ range, jobs, fileId: createRunFile(runId, range.month, filePath), filePath });
     progress.jobsTotal += jobs.length;
@@ -389,7 +434,7 @@ export async function executeRun(
     }
     updateRunFile(month.fileId, { status: "running", jobs: 0, photos: 0, bytes: 0 });
     try {
-      const result = await buildMonthZip(config, runId, month.jobs, month.filePath, (delta) => {
+      const result = await buildMonthZip(config, runId, month.jobs, month.filePath, tuning, paced, (delta) => {
         progress.jobsDone += delta.jobsDone;
         progress.photosTotal += delta.photos;
         progress.bytesTotal += delta.bytes;

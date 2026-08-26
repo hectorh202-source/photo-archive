@@ -39,6 +39,8 @@ Each client has three tabs:
 | Delivery | Download today; Google Drive, Dropbox, SharePoint, S3 fields ready for when each is implemented |
 | Notifications | Email results, SMTP, Slack/Teams webhook |
 
+Every one of these is read by the runner at the moment a run starts, not sampled as it goes — a settings change mid-run would otherwise apply to some months and not others.
+
 Secrets are write-only. The API reports whether one is set, never what it is, so a stolen session cannot read a client's ServiceTitan secret back out.
 
 Everything is encrypted at rest with AES-256-GCM. Set `ENCRYPTION_KEY` in the environment before storing real credentials — without it the key falls back to a file inside the data volume, where a leaked backup carries both the ciphertext and the key. Changing the key later makes everything already stored permanently unreadable.
