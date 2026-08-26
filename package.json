@@ -1,0 +1,28 @@
+{
+  "name": "photo-archive",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Retrieves a ServiceTitan tenant's job photos and packages them as a deliverable archive",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p .",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/archiver": "^8.0.0",
+    "@types/express": "^4.17.21",
+    "@types/express-session": "^1.18.1",
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

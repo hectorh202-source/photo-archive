@@ -1,0 +1,39 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      - PORT=3100
+      - DATABASE_PATH=/data/archive.db
+      # Archives are tens of gigabytes per client — kept on their own volume
+      # so the database volume stays small enough to back up casually.
+      - ARCHIVE_PATH=/archives
+      # Strongly recommended: without it the encryption key falls back to a
+      # file inside /data, so a leaked backup of that volume carries both the
+      # encrypted ServiceTitan credentials and the key to read them. Sourced
+      # from a gitignored .env next to this file.
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
+    volumes:
+      - app-data:/data
+      - archives:/archives
+    expose:
+      - "3100"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+volumes:
+  app-data:
+  archives:
+  caddy-data:
+  caddy-config:

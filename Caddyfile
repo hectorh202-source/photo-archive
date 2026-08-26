@@ -1,0 +1,12 @@
+# Replace with the real hostname before deploying. Caddy requests and renews
+# the HTTPS certificate automatically as long as DNS points here.
+archive.example.com {
+	reverse_proxy app:3100 {
+		# An archive download is hundreds of megabytes and can take a while
+		# on a slow connection; the default stream timeouts would cut it off.
+		flush_interval -1
+	}
+	request_body {
+		max_size 2MB
+	}
+}
