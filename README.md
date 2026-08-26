@@ -6,6 +6,8 @@ Built for one errand — a contractor leaving ServiceTitan whose photo history l
 
 Read-only against ServiceTitan throughout. Every call is a `GET`; nothing is created, changed, or deleted in a client's tenant.
 
+A plain-English handbook for the people who will actually use it — no technical knowledge assumed — lives at [docs/handbook.html](docs/handbook.html). Open it in a browser, or print it to PDF and send it with the app.
+
 ## Running it
 
 ```bash

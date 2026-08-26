@@ -1,0 +1,939 @@
+<title>Photo Archive Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --bg: #F5F7F6;
+    --surface: #FFFFFF;
+    --surface-2: #FAFBFB;
+    --ink: #10201C;
+    --ink-2: #475853;
+    --ink-3: #77877F;
+    --line: #E3E9E6;
+    --line-2: #CFD9D5;
+    --accent: #0F6E56;
+    --accent-ink: #0B5A46;
+    --accent-soft: #E7F2EE;
+    --warn: #9A6212;
+    --warn-soft: #FBF1E1;
+    --danger: #A8322A;
+    --danger-soft: #FBEBE9;
+    --radius: 12px;
+    --shadow: 0 1px 3px rgba(16,32,28,.06), 0 12px 32px -20px rgba(16,32,28,.3);
+    --ui: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0B1210;
+      --surface: #131C19;
+      --surface-2: #0F1714;
+      --ink: #E9F0EC;
+      --ink-2: #A7B6B0;
+      --ink-3: #75857E;
+      --line: #223029;
+      --line-2: #2F403A;
+      --accent: #4FBE9B;
+      --accent-ink: #7FD3B8;
+      --accent-soft: #16302A;
+      --warn: #D9A45E;
+      --warn-soft: #2A2015;
+      --danger: #E38078;
+      --danger-soft: #301A18;
+      --shadow: 0 1px 3px rgba(0,0,0,.4), 0 12px 32px -20px rgba(0,0,0,.9);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0B1210;
+    --surface: #131C19;
+    --surface-2: #0F1714;
+    --ink: #E9F0EC;
+    --ink-2: #A7B6B0;
+    --ink-3: #75857E;
+    --line: #223029;
+    --line-2: #2F403A;
+    --accent: #4FBE9B;
+    --accent-ink: #7FD3B8;
+    --accent-soft: #16302A;
+    --warn: #D9A45E;
+    --warn-soft: #2A2015;
+    --danger: #E38078;
+    --danger-soft: #301A18;
+    --shadow: 0 1px 3px rgba(0,0,0,.4), 0 12px 32px -20px rgba(0,0,0,.9);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--ui);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 54rem; margin: 0 auto; padding: 3rem 1.25rem 6rem; }
+
+  h1, h2, h3 { margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+  h1 { font-size: clamp(2rem, 5.5vw, 2.85rem); font-weight: 800; line-height: 1.05; }
+  h2 { font-size: 1.5rem; font-weight: 700; }
+  h3 { font-size: 1.1rem; font-weight: 600; }
+  p { margin: 0; max-width: 62ch; }
+  ul, ol { margin: 0; padding-left: 1.35rem; }
+  li { margin-bottom: .4rem; max-width: 60ch; }
+  strong { font-weight: 600; }
+
+  code, .kbd {
+    font-family: var(--mono);
+    font-size: .88em;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: .08em .38em;
+  }
+
+  .lede { font-size: 1.15rem; color: var(--ink-2); max-width: 56ch; }
+
+  header.hero {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-bottom: 2.25rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2.5rem;
+  }
+  .badge-row { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .tag {
+    font-size: .78rem;
+    font-weight: 600;
+    padding: .2rem .6rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+
+  /* --- contents --- */
+  nav.toc {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.4rem;
+    margin-bottom: 3rem;
+  }
+  nav.toc h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); margin-bottom: .8rem; }
+  nav.toc ol { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .3rem 1.5rem; counter-reset: toc; }
+  nav.toc li { margin: 0; counter-increment: toc; }
+  nav.toc a { text-decoration: none; color: var(--ink); display: flex; gap: .6rem; padding: .3rem 0; }
+  nav.toc a:hover { color: var(--accent-ink); }
+  nav.toc a::before { content: counter(toc, decimal-leading-zero); font-family: var(--mono); font-size: .8rem; color: var(--ink-3); }
+
+  /* --- sections --- */
+  section { margin-bottom: 3.5rem; scroll-margin-top: 1.5rem; }
+  section > h2 { display: flex; align-items: baseline; gap: .7rem; margin-bottom: .5rem; }
+  .sec-num {
+    font-family: var(--mono);
+    font-size: .95rem;
+    font-weight: 500;
+    color: var(--accent-ink);
+    background: var(--accent-soft);
+    border-radius: 6px;
+    padding: .1rem .45rem;
+  }
+  .sec-intro { color: var(--ink-2); margin-bottom: 1.5rem; }
+
+  /* --- steps --- */
+  .steps { display: flex; flex-direction: column; gap: 1rem; counter-reset: step; }
+  .step {
+    display: grid;
+    grid-template-columns: 2rem 1fr;
+    gap: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.25rem;
+    counter-increment: step;
+  }
+  .step::before {
+    content: counter(step);
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: .95rem;
+    width: 2rem; height: 2rem;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+  }
+  .step-body { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+  .step-body strong.title { font-size: 1.02rem; font-weight: 600; }
+  .step-body p, .step-body li { font-size: .97rem; }
+
+  /* --- callouts --- */
+  .note {
+    display: flex;
+    gap: .8rem;
+    padding: 1rem 1.15rem;
+    border-radius: var(--radius);
+    margin: 1.25rem 0;
+    font-size: .95rem;
+    line-height: 1.55;
+  }
+  .note p { max-width: none; }
+  .note-tip { background: var(--accent-soft); color: var(--accent-ink); }
+  .note-warn { background: var(--warn-soft); color: var(--warn); }
+  .note-stop { background: var(--danger-soft); color: var(--danger); }
+  .note-icon { font-size: 1.1rem; line-height: 1.4; }
+
+  /* --- screen mock --- */
+  .screen {
+    background: var(--surface);
+    border: 1px solid var(--line-2);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin: 1.25rem 0;
+    font-size: .9rem;
+  }
+  .screen-bar {
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+    padding: .55rem .9rem;
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+  }
+  .screen-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line-2); }
+  .screen-title { font-size: .8rem; color: var(--ink-3); margin-left: .4rem; }
+  .screen-body { padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .7rem; }
+  .fake-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+  .fake-label { font-size: .78rem; color: var(--ink-3); min-width: 7rem; }
+  .fake-input {
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    padding: .35rem .55rem;
+    color: var(--ink-3);
+    font-size: .85rem;
+    background: var(--surface-2);
+    flex: 1;
+    min-width: 8rem;
+  }
+  .fake-btn {
+    background: var(--accent);
+    color: #fff;
+    border-radius: 6px;
+    padding: .35rem .8rem;
+    font-size: .85rem;
+    font-weight: 500;
+  }
+  .fake-btn.ghost { background: transparent; color: var(--ink-2); border: 1px solid var(--line-2); }
+  .pill {
+    font-size: .75rem;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: .1rem .55rem;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+
+  /* --- file tree --- */
+  pre.tree {
+    font-family: var(--mono);
+    font-size: .82rem;
+    line-height: 1.85;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.25rem;
+    overflow-x: auto;
+    margin: 1.25rem 0;
+    color: var(--ink-2);
+  }
+  pre.tree b { color: var(--ink); font-weight: 600; }
+
+  /* --- tables --- */
+  .table-wrap { overflow-x: auto; margin: 1.25rem 0; }
+  table { width: 100%; border-collapse: collapse; font-size: .93rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  th {
+    text-align: left;
+    font-size: .74rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    background: var(--surface-2);
+    padding: .7rem .9rem;
+    border-bottom: 1px solid var(--line);
+  }
+  td { padding: .8rem .9rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { font-weight: 500; }
+
+  /* --- glossary --- */
+  dl.glossary { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; margin: 1.25rem 0 0; }
+  dl.glossary > div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: .95rem 1.1rem; }
+  dt { font-weight: 600; margin-bottom: .25rem; }
+  dd { margin: 0; font-size: .92rem; color: var(--ink-2); }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding-top: 1.5rem;
+    color: var(--ink-3);
+    font-size: .88rem;
+  }
+
+  @media print {
+    body { background: #fff; font-size: 11pt; }
+    .page { padding: 0; max-width: none; }
+    nav.toc { break-after: page; }
+    section, .step, .note, .screen, table { break-inside: avoid; }
+  }
+</style>
+
+<div class="page">
+
+<header class="hero">
+  <div class="badge-row">
+    <span class="tag">User handbook</span>
+    <span class="tag">No technical knowledge needed</span>
+  </div>
+  <h1>Photo Archive</h1>
+  <p class="lede">
+    This app copies your job photos out of ServiceTitan and saves them as ordinary folders on your own computer, so you
+    keep them forever — even after you stop paying for ServiceTitan.
+  </p>
+  <p style="color:var(--ink-2); font-size:.95rem;">
+    Everything below is written step by step. If you can use email, you can use this.
+  </p>
+</header>
+
+<nav class="toc">
+  <h2>What's in this guide</h2>
+  <ol>
+    <li><a href="#what">What this app does</a></li>
+    <li><a href="#open">Opening the app</a></li>
+    <li><a href="#account">Making your account</a></li>
+    <li><a href="#client">Adding your company</a></li>
+    <li><a href="#connect">Connecting to ServiceTitan</a></li>
+    <li><a href="#onejob">Getting one job's photos</a></li>
+    <li><a href="#archive">Getting all your photos</a></li>
+    <li><a href="#zip">Opening what you downloaded</a></li>
+    <li><a href="#share">Sending photos to someone</a></li>
+    <li><a href="#space">Cleaning up space</a></li>
+    <li><a href="#problems">When something goes wrong</a></li>
+    <li><a href="#words">Words explained</a></li>
+  </ol>
+</nav>
+
+<section id="what">
+  <h2><span class="sec-num">01</span> What this app does</h2>
+  <p class="sec-intro">In one sentence: it gets your pictures out.</p>
+
+  <p>
+    Every time your technicians take photos on a job, those pictures go into ServiceTitan. They stay there as long as
+    you keep paying for ServiceTitan. If you ever stop — or switch to different software — <strong>the pictures go
+    away with it</strong>. ServiceTitan has no button that downloads them all.
+  </p>
+  <p style="margin-top:1rem;">
+    This app is that button. It logs into your ServiceTitan, finds every photo, and saves them into folders named after
+    your customers and the dates of the jobs.
+  </p>
+
+  <div class="note note-tip">
+    <span class="note-icon">✓</span>
+    <p>
+      <strong>It cannot break anything.</strong> This app only <em>reads</em> from ServiceTitan. It can't change,
+      delete, or move anything in your account. Think of it as taking photocopies — the originals stay exactly where
+      they are.
+    </p>
+  </div>
+</section>
+
+<section id="open">
+  <h2><span class="sec-num">02</span> Opening the app</h2>
+  <p class="sec-intro">Same as opening any website.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Open your web browser</strong>
+        <p>Chrome, Edge, Safari — whichever you normally use.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Type the address you were given</strong>
+        <p>
+          It looks like <code>photos.yourcompany.com</code> or <code>localhost:3100/app</code>. Whoever set this up for
+          you will have sent it. Press <span class="kbd">Enter</span>.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Bookmark it</strong>
+        <p>Press <span class="kbd">Ctrl</span> + <span class="kbd">D</span> so you never have to type it again.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="note note-warn">
+    <span class="note-icon">!</span>
+    <p>
+      <strong>Nothing loads?</strong> The app runs on a computer that has to be switched on. If the page won't open,
+      that computer or server is off — contact whoever set it up. Nothing is lost; it just isn't running right now.
+    </p>
+  </div>
+</section>
+
+<section id="account">
+  <h2><span class="sec-num">03</span> Making your account</h2>
+  <p class="sec-intro">You only ever do this once.</p>
+
+  <p>The very first person to open the app creates the account. After that, this screen turns into a normal sign-in.</p>
+
+  <div class="screen">
+    <div class="screen-bar">
+      <span class="screen-dot"></span><span class="screen-dot"></span><span class="screen-dot"></span>
+      <span class="screen-title">Photo Archive — first visit</span>
+    </div>
+    <div class="screen-body">
+      <p style="font-size:.88rem; color:var(--ink-2);">Nobody has signed in here yet. The email and password you enter become the first account.</p>
+      <div class="fake-row"><span class="fake-label">Email</span><span class="fake-input">you@yourcompany.com</span></div>
+      <div class="fake-row"><span class="fake-label">Password</span><span class="fake-input">••••••••••</span></div>
+      <div class="fake-row"><span class="fake-btn">Create account</span></div>
+    </div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Type your work email</strong>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Make up a password</strong>
+        <p>At least 8 characters. Write it down somewhere safe — there's no "forgot password" email yet.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Click <em>Create account</em></strong>
+        <p>You're in. Next time you visit, the same screen just says <em>Sign in</em>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="client">
+  <h2><span class="sec-num">04</span> Adding your company</h2>
+  <p class="sec-intro">Tell the app whose photos it's fetching.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Click the green <em>New client</em> button</strong>
+        <p>Top right of the screen.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Type your company name</strong>
+        <p>Exactly as you'd write it on an invoice.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Add a cutover date, if you have one</strong>
+        <p>
+          This is the day your ServiceTitan subscription ends. The app counts down to it on every screen, because
+          <strong>after that date the photos can't be fetched at all</strong>. Leave it blank if you're not leaving
+          ServiceTitan.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Click <em>Add client</em></strong>
+        <p>The app takes you straight to Settings, because that's what has to happen next.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="connect">
+  <h2><span class="sec-num">05</span> Connecting to ServiceTitan</h2>
+  <p class="sec-intro">The one fiddly part. Do it once and never again.</p>
+
+  <p>
+    The app needs permission to read your ServiceTitan. That permission comes as four codes you copy from ServiceTitan
+    and paste into the app.
+  </p>
+
+  <div class="note note-tip">
+    <span class="note-icon">✓</span>
+    <p>
+      <strong>Don't do this alone if you'd rather not.</strong> Whoever manages ServiceTitan for you — your office
+      manager, your IT person, or ServiceTitan's own support — can get these four codes in about ten minutes. Forward
+      them this section.
+    </p>
+  </div>
+
+  <h3 style="margin-top:2rem;">The four codes</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>What it's called</th><th>What it looks like</th></tr></thead>
+      <tbody>
+        <tr><td>Tenant ID</td><td>A long number, like 1701031075. This identifies your company.</td></tr>
+        <tr><td>Client ID</td><td>A long string of letters and numbers.</td></tr>
+        <tr><td>Client Secret</td><td>Another long string. Treat it like a password — never email it.</td></tr>
+        <tr><td>App Key</td><td>One more string, starting with letters.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Where they come from</h3>
+  <p style="margin-bottom:1rem;">
+    Someone with ServiceTitan admin access creates an "application" inside ServiceTitan's developer area, and it hands
+    back those four codes. The screens change from time to time, so use this as a map rather than exact directions:
+  </p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Sign in to ServiceTitan's developer portal</strong>
+        <p><code>developer.servicetitan.io</code> — with a ServiceTitan admin account.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Create a new app</strong>
+        <p>Give it a name like "Photo Archive". It will show you a <strong>Client ID</strong> and <strong>Client Secret</strong>.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Turn on the permissions it needs</strong>
+        <p>
+          The app needs read access to <strong>Job Planning &amp; Management</strong>, <strong>CRM</strong>, and — this
+          is the one everybody forgets — <strong>Forms</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Approve the app inside ServiceTitan</strong>
+        <p>
+          In ServiceTitan itself (not the developer site), under Settings → Integrations → API Application Access,
+          approve the app you just made. That page also shows your <strong>Tenant ID</strong> and gives you the
+          <strong>App Key</strong>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="note note-stop">
+    <span class="note-icon">⚠</span>
+    <p>
+      <strong>Forms permission is the difference between photos and no photos.</strong> ServiceTitan stores job photos
+      in a section called Forms. Without that permission the app still works, still downloads your job records — and
+      brings back <em>zero pictures</em>. If you only remember one thing from this page, remember this.
+    </p>
+  </div>
+
+  <h3 style="margin-top:2rem;">Putting them in</h3>
+  <div class="steps">
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Open your company, then the <em>Settings</em> tab</strong>
+        <p>You'll land on <strong>01 Connection</strong>.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Leave "Which ServiceTitan" on <em>Production</em></strong>
+        <p>Production means your real data. Sandbox is a practice version with made-up jobs in it.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Paste the four codes into the four boxes</strong>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Click <em>Save changes</em>, then <em>Test connection</em></strong>
+        <p>
+          If it worked you'll see something like <em>"Connected to their production account — 75,450 jobs visible."</em>
+          That number is how many jobs you have. Seeing it means everything is right.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="note note-tip">
+    <span class="note-icon">✓</span>
+    <p>
+      <strong>Your codes are safe.</strong> They're scrambled before being stored, and the app never shows them again —
+      even to you. If you need to change one, just type the new one over the top.
+    </p>
+  </div>
+</section>
+
+<section id="onejob">
+  <h2><span class="sec-num">06</span> Getting one job's photos</h2>
+  <p class="sec-intro">For when someone calls and needs pictures from a specific job.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Click the <em>One job</em> tab</strong>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Type the job number</strong>
+        <p>The number you see on the job in ServiceTitan. For example <code>89496</code>.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Choose what you want</strong>
+        <p>
+          <strong>Photos only</strong> is right nearly every time. The other choices add invoices and signed estimates,
+          or the job's written records.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Click <em>Look up</em></strong>
+        <p>
+          You'll see the customer's name, their address, and how many photos exist. <strong>Check the name is who you
+          expected</strong> before going further.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Click <em>Download photos</em></strong>
+        <p>A zip file lands in your Downloads folder within a few seconds.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="archive">
+  <h2><span class="sec-num">07</span> Getting all your photos</h2>
+  <p class="sec-intro">The big one. Start it, walk away, come back later.</p>
+
+  <p>
+    This fetches every photo from every job in a date range. For a company with years of history it can take
+    <strong>days</strong> — not because the app is slow, but because it's being deliberately gentle so your dispatchers
+    aren't slowed down while it runs.
+  </p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Click the <em>Photo archive</em> tab</strong>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Set the dates</strong>
+        <p>
+          <em>From</em> and <em>To</em>. It starts on the last seven years, which for most companies is everything.
+          Leave <em>Match jobs by</em> on <em>Date completed</em>.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Click <em>Check size first</em></strong>
+        <p>
+          Takes about a minute and downloads nothing. It tells you how many jobs, roughly how many photos, how big, and
+          how long. Read it before committing.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Click <em>Start archive</em></strong>
+        <p>
+          Now close the page if you like. <strong>The work happens on the server, not in your browser.</strong> Turn
+          your computer off and it keeps going.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Come back and download the months</strong>
+        <p>
+          The app splits your history into one file per month. Each month gets a <em>Download</em> link the moment it's
+          finished — you don't wait for the whole thing to grab January.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <div class="screen-bar">
+      <span class="screen-dot"></span><span class="screen-dot"></span><span class="screen-dot"></span>
+      <span class="screen-title">Photo archive — while it's running</span>
+    </div>
+    <div class="screen-body">
+      <div class="fake-row"><span class="pill warn">Running</span><span style="font-weight:600;">2019-01-01 → 2026-08-26</span></div>
+      <div style="height:6px;background:var(--line);border-radius:999px;overflow:hidden;"><span style="display:block;height:100%;width:38%;background:var(--accent);border-radius:999px;"></span></div>
+      <p style="font-size:.85rem;color:var(--ink-2);">28,671 of 75,450 jobs checked (38%) — Downloading photos (2021-04)</p>
+      <div class="fake-row" style="gap:1.5rem;">
+        <span><strong style="font-family:var(--mono);">64,120</strong> <span style="font-size:.78rem;color:var(--ink-3);">photos so far</span></span>
+        <span><strong style="font-family:var(--mono);">19 GB</strong> <span style="font-size:.78rem;color:var(--ink-3);">downloaded</span></span>
+        <span><strong style="font-family:var(--mono);">27</strong> <span style="font-size:.78rem;color:var(--ink-3);">months ready</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="note note-warn">
+    <span class="note-icon">!</span>
+    <p>
+      <strong>Only one archive runs at a time per company.</strong> If the Start button says "Archive running", one is
+      already going. Let it finish, or click <em>Stop</em> if you started the wrong dates.
+    </p>
+  </div>
+</section>
+
+<section id="zip">
+  <h2><span class="sec-num">08</span> Opening what you downloaded</h2>
+  <p class="sec-intro">Ordinary folders. Nothing special needed.</p>
+
+  <p>
+    Each download is a <strong>zip file</strong> — a folder that's been squeezed into one file so it travels in one
+    piece. On Windows: right-click it, choose <em>Extract All</em>, click <em>Extract</em>. On a Mac: double-click it.
+  </p>
+
+  <p style="margin-top:1rem;">Inside, it's organised by job:</p>
+
+  <pre class="tree"><b>Titanz-Plumbing-photos-2026-07.zip</b>
+  <b>88801 - Dana Whitfield - 2026-07-03/</b>
+    Dana Whitfield - 2026-07-03 - 001.jpg
+    Dana Whitfield - 2026-07-03 - 002.jpg
+    Dana Whitfield - 2026-07-03 - 003.jpg
+  <b>88802 - Marcus Reyes - 2026-07-19/</b>
+    Marcus Reyes - 2026-07-19 - 001.jpg
+  <b>README.txt</b>   ← a note listing anything that couldn't be fetched</pre>
+
+  <p>
+    Each folder is one job: <strong>job number, customer name, date</strong>. Each photo is named the same way, so a
+    picture still makes sense months later when it's sitting on its own in an email.
+  </p>
+
+  <div class="note note-tip">
+    <span class="note-icon">✓</span>
+    <p>
+      <strong>These are normal picture files.</strong> Any computer opens them, forever, with no software and no
+      subscription. That's the whole point.
+    </p>
+  </div>
+
+  <p style="margin-top:1.5rem;">
+    <strong>Always open README.txt.</strong> If anything couldn't be fetched, it's listed there by name. An empty
+    warnings list means you got everything.
+  </p>
+</section>
+
+<section id="share">
+  <h2><span class="sec-num">09</span> Sending photos to someone</h2>
+  <p class="sec-intro">An adjuster, a customer, a lawyer.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Small job, a few photos?</strong>
+        <p>Attach them straight to an email. Anything under about 20 MB is fine.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">A whole month, or several?</strong>
+        <p>
+          Email won't take it. Upload the folder to Google Drive, Dropbox, or OneDrive, then send the person a link.
+          Drag the extracted folder into the browser window — that's all "uploading" means.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Keep your own copy somewhere else</strong>
+        <p>
+          One copy is not a backup. Put the archive on an external drive as well as in the cloud. These photos can't be
+          fetched again after your ServiceTitan account closes.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="space">
+  <h2><span class="sec-num">10</span> Cleaning up space</h2>
+  <p class="sec-intro">Archives are big. Delete them once you've saved them somewhere safe.</p>
+
+  <p>
+    Finished archives sit on the server taking up room. Once you've downloaded a month and saved it properly, you can
+    remove it.
+  </p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">One month at a time</strong>
+        <p>Click <em>Delete</em> on that month's row. The rest of the archive stays.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">A whole archive</strong>
+        <p>Click <em>Delete</em> at the top of the archive. Every month in it goes.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-body">
+        <strong class="title">Confirm when it asks</strong>
+        <p>It tells you exactly what's about to go and how big it is. Nothing deletes on a single click.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="note note-stop">
+    <span class="note-icon">⚠</span>
+    <p>
+      <strong>Deleting here does not touch ServiceTitan.</strong> It only removes the copy on the server. But if your
+      ServiceTitan account has already closed, that copy might be the only one left — so make sure you've saved it
+      somewhere before you delete.
+    </p>
+  </div>
+
+  <p>Anything you forget about is removed automatically after 14 days, so the server can't fill up on its own.</p>
+</section>
+
+<section id="problems">
+  <h2><span class="sec-num">11</span> When something goes wrong</h2>
+  <p class="sec-intro">The handful of things that actually happen, and what to do.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>What you see</th><th>What it means</th><th>What to do</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>"Needs credentials"</td>
+          <td>The four ServiceTitan codes haven't been entered yet.</td>
+          <td>Go to Settings → Connection. See section 05.</td>
+        </tr>
+        <tr>
+          <td>Test connection says <code>invalid_client</code></td>
+          <td>The Client ID or Client Secret is wrong, or was changed in ServiceTitan.</td>
+          <td>Get a fresh Client Secret from the developer portal and paste it in again.</td>
+        </tr>
+        <tr>
+          <td>Everything works but <strong>no photos come back</strong></td>
+          <td>Almost always the Forms permission is missing.</td>
+          <td>Have your ServiceTitan admin add Forms access, then re-approve the app. See section 05.</td>
+        </tr>
+        <tr>
+          <td>"No ServiceTitan job found"</td>
+          <td>Either a typo, or the app is pointed at Sandbox instead of Production.</td>
+          <td>Check the number, then check Settings → Connection says Production.</td>
+        </tr>
+        <tr>
+          <td>"Archive running" and the button won't click</td>
+          <td>One archive is already going for this company.</td>
+          <td>Wait for it, or click <em>Stop</em> and start again with the dates you meant.</td>
+        </tr>
+        <tr>
+          <td>"Interrupted by a server restart"</td>
+          <td>The server rebooted mid-archive.</td>
+          <td>Months already finished are still fine. Start a new archive for the dates that didn't finish.</td>
+        </tr>
+        <tr>
+          <td>A month says "Failed"</td>
+          <td>That month hit a problem; the others are unaffected.</td>
+          <td>Run a new archive covering just that month.</td>
+        </tr>
+        <tr>
+          <td>It's going very slowly</td>
+          <td>It's designed to. Slow keeps ServiceTitan fast for your staff.</td>
+          <td>Leave it. Only raise Settings → Speed if you're told it's safe.</td>
+        </tr>
+        <tr>
+          <td>The page won't load at all</td>
+          <td>The server is switched off.</td>
+          <td>Contact whoever set the app up. Nothing is lost.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note note-tip">
+    <span class="note-icon">✓</span>
+    <p>
+      <strong>Nothing you click in this app can damage ServiceTitan.</strong> It has no ability to write, edit, or
+      delete anything there. The worst case is a download that fails, and you simply run it again.
+    </p>
+  </div>
+</section>
+
+<section id="words">
+  <h2><span class="sec-num">12</span> Words explained</h2>
+  <p class="sec-intro">Terms you'll bump into, in plain English.</p>
+
+  <dl class="glossary">
+    <div>
+      <dt>Zip file</dt>
+      <dd>A folder squeezed into a single file so it's easy to move around. Right-click → Extract All to open it.</dd>
+    </div>
+    <div>
+      <dt>Tenant</dt>
+      <dd>ServiceTitan's word for your company's account. Your Tenant ID is your company's number.</dd>
+    </div>
+    <div>
+      <dt>Credentials</dt>
+      <dd>The four codes that let the app read your ServiceTitan. Like a key cut for one specific door.</dd>
+    </div>
+    <div>
+      <dt>Cutover date</dt>
+      <dd>The day your ServiceTitan subscription ends. After it, your photos can't be fetched by anyone.</dd>
+    </div>
+    <div>
+      <dt>Archive</dt>
+      <dd>One batch of photos fetched in one go, split into monthly files.</dd>
+    </div>
+    <div>
+      <dt>Manifest / README</dt>
+      <dd>The note inside each zip listing anything that couldn't be fetched. Your proof nothing went missing quietly.</dd>
+    </div>
+    <div>
+      <dt>Sandbox</dt>
+      <dd>A practice copy of ServiceTitan with fake jobs. Useful for testing, useless for real photos.</dd>
+    </div>
+    <div>
+      <dt>Server</dt>
+      <dd>The always-on computer running this app. It keeps working when your own computer is off.</dd>
+    </div>
+  </dl>
+</section>
+
+<footer>
+  <p>
+    Photo Archive — user handbook. If something in here doesn't match what you see on screen, trust the screen and ask
+    whoever set the app up; it may have been updated since this was written.
+  </p>
+</footer>
+
+</div>
