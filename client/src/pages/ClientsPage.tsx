@@ -1,14 +1,17 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, daysUntil, type Client } from "../api";
 
-// The landing page is the client list, because this app's unit of work is a
-// client — not a run, not a job.
+// A table, not cards: the useful comparison across clients is "which one is
+// ready, and whose deadline is closest", and rows compare far better than
+// tiles do.
 export function ClientsPage() {
   const cache = useQueryClient();
+  const navigate = useNavigate();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
+  const [contact, setContact] = useState("");
   const [cutover, setCutover] = useState("");
   const [error, setError] = useState("");
 
@@ -18,13 +21,22 @@ export function ClientsPage() {
   });
 
   const create = useMutation({
-    mutationFn: () => api.post<Client>("/api/clients", { name, cutoverDate: cutover || null }),
-    onSuccess: () => {
+    mutationFn: () =>
+      api.post<Client>("/api/clients", {
+        name: name.trim(),
+        contactName: contact.trim() || null,
+        cutoverDate: cutover || null,
+      }),
+    onSuccess: (client) => {
       setName("");
+      setContact("");
       setCutover("");
       setAdding(false);
       setError("");
       cache.invalidateQueries({ queryKey: ["clients"] });
+      // Straight into the new client's settings, because a client without
+      // credentials cannot do anything yet and that is the obvious next step.
+      navigate(`/clients/${client.id}?tab=settings`);
     },
     onError: (e) => setError((e as Error).message),
   });
@@ -32,70 +44,134 @@ export function ClientsPage() {
   const clients = data?.clients ?? [];
 
   return (
-    <div className="stack">
-      <div className="row">
-        <h1>Clients</h1>
-        <span className="row-end" />
-        <button type="button" className="btn btn-primary" onClick={() => setAdding((v) => !v)}>
-          {adding ? "Cancel" : "Add client"}
-        </button>
+    <>
+      <div className="page-head">
+        <div className="row">
+          <h1>Clients</h1>
+          <span className="spacer" />
+          <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
+            New client
+          </button>
+        </div>
+        <p className="sub">Each client is one ServiceTitan account you retrieve photos from.</p>
+      </div>
+
+      <div className="page-body stack">
+        {isLoading && <p className="muted">Loading…</p>}
+
+        {!isLoading && clients.length === 0 && (
+          <div className="card">
+            <div className="empty">
+              <h3>No clients yet</h3>
+              <p>
+                Add the contractor whose photos you are retrieving, then paste their ServiceTitan credentials on the
+                Settings tab. Everything else unlocks from there.
+              </p>
+              <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
+                Add your first client
+              </button>
+            </div>
+          </div>
+        )}
+
+        {clients.length > 0 && (
+          <div className="card">
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Client</th>
+                    <th>ServiceTitan</th>
+                    <th>Cutover</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {clients.map((client) => {
+                    const days = daysUntil(client.cutoverDate);
+                    return (
+                      <tr
+                        key={client.id}
+                        style={{ cursor: "pointer" }}
+                        onClick={() => navigate(`/clients/${client.id}`)}
+                      >
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{client.name}</div>
+                          {client.contactName && <div className="tiny">{client.contactName}</div>}
+                        </td>
+                        <td>
+                          <span className={`pill ${client.serviceTitanConfigured ? "pill-ok" : "pill-warn"}`}>
+                            {client.serviceTitanConfigured ? "Connected" : "Needs credentials"}
+                          </span>
+                          {client.activeRunId && (
+                            <span className="pill pill-warn pill-live" style={{ marginLeft: ".4rem" }}>
+                              Archiving
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {days === null ? (
+                            <span className="muted">—</span>
+                          ) : days < 0 ? (
+                            <span className="pill pill-bad">Passed {Math.abs(days)}d ago</span>
+                          ) : (
+                            <span className={`pill ${days < 60 ? "pill-warn" : ""}`}>{days} days left</span>
+                          )}
+                        </td>
+                        <td>
+                          <span className="link-btn">Open →</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {adding && (
-        <form
-          className="card row"
-          style={{ alignItems: "flex-end" }}
-          onSubmit={(e) => {
-            e.preventDefault();
-            create.mutate();
-          }}
-        >
-          <label className="field" style={{ flex: "1 1 16rem" }}>
-            Client name
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Titanz Plumbing Inc" required />
-          </label>
-          <label className="field">
-            ServiceTitan cutover date
-            <input type="date" value={cutover} onChange={(e) => setCutover(e.target.value)} />
-          </label>
-          <button type="submit" className="btn btn-primary" disabled={create.isPending || name.trim() === ""}>
-            {create.isPending ? "Adding…" : "Add"}
-          </button>
-          {error && <div className="flash flash-error">{error}</div>}
-        </form>
-      )}
-
-      {isLoading && <p className="muted">Loading…</p>}
-      {!isLoading && clients.length === 0 && (
-        <p className="hint">
-          No clients yet. Add one, put their ServiceTitan credentials on its Settings tab, and the archive tools open up.
-        </p>
-      )}
-
-      <div className="client-grid">
-        {clients.map((client) => {
-          const days = daysUntil(client.cutoverDate);
-          return (
-            <Link key={client.id} to={`/clients/${client.id}`} className="card client-card">
-              <span className="client-name">{client.name}</span>
-              <div className="row" style={{ gap: ".4rem" }}>
-                <span className={`badge ${client.serviceTitanConfigured ? "badge-ok" : "badge-warn"}`}>
-                  {client.serviceTitanConfigured ? "connected" : "needs credentials"}
-                </span>
-                {client.activeRunId && <span className="badge badge-warn">archiving</span>}
-                {client.archived && <span className="badge">closed</span>}
+        <div className="overlay" onClick={() => setAdding(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                create.mutate();
+              }}
+            >
+              <div className="card-head">
+                <h2>New client</h2>
               </div>
-              {/* A cutover date is a countdown, not a date field: past it, the
-                  photos are unreachable at any price. */}
-              {days !== null && (
-                <span className={`badge ${days < 0 ? "badge-bad" : days < 60 ? "badge-warn" : ""}`}>
-                  {days < 0 ? `cutover passed ${Math.abs(days)}d ago` : `${days} days to cutover`}
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </div>
-    </div>
+              <div className="card-body">
+                <label className="field">
+                  <span>Company name</span>
+                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Titanz Plumbing Inc" autoFocus required />
+                </label>
+                <label className="field">
+                  <span>Main contact</span>
+                  <input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Optional" />
+                </label>
+                <label className="field">
+                  <span>ServiceTitan cutover date</span>
+                  <input type="date" value={cutover} onChange={(e) => setCutover(e.target.value)} />
+                  <span className="help">
+                    The day their account lapses. After it, the photos cannot be retrieved at any price — so this shows
+                    as a countdown everywhere.
+                  </span>
+                </label>
+                {error && <div className="notice notice-bad">{error}</div>}
+              </div>
+              <div className="card-foot">
+                <button type="submit" className="btn btn-primary" disabled={create.isPending || name.trim() === ""}>
+                  {create.isPending ? "Adding…" : "Add client"}
+                </button>
+                <button type="button" className="btn" onClick={() => setAdding(false)}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

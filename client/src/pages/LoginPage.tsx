@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 
-// Doubles as first-run setup: with no users in the database the same form
+// Doubles as first-run setup: with no users in the database this same form
 // creates the first account, then never offers to again.
 export function LoginPage() {
   const navigate = useNavigate();
@@ -34,33 +34,39 @@ export function LoginPage() {
   }
 
   return (
-    <div className="auth-wrap">
+    <div className="auth">
       <form className="card auth-card" onSubmit={submit}>
-        <div className="brand"><span className="brand-mark" />Photo Archive</div>
-        <p className="hint" style={{ margin: 0 }}>
-          {needsSetup
-            ? "No account exists yet. The email and password you enter here become the first one."
-            : "Sign in to run and manage client archives."}
-        </p>
-        <label className="field">
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required />
-        </label>
-        <label className="field">
-          Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete={needsSetup ? "new-password" : "current-password"}
-            required
-            minLength={8}
-          />
-        </label>
-        {error && <div className="flash flash-error">{error}</div>}
-        <button type="submit" className="btn btn-primary" disabled={busy}>
-          {busy ? "Working…" : needsSetup ? "Create account" : "Sign in"}
-        </button>
+        <div className="card-head" style={{ justifyContent: "center" }}>
+          <span className="brand-mark">PA</span>
+          <strong style={{ fontSize: "1.05rem", letterSpacing: "-0.02em" }}>Photo Archive</strong>
+        </div>
+        <div className="card-body">
+          <p className="sub">
+            {needsSetup
+              ? "Nobody has signed in here yet. The email and password you enter become the first account."
+              : "Sign in to run and manage client archives."}
+          </p>
+          <label className="field">
+            <span>Email</span>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required />
+          </label>
+          <label className="field">
+            <span>Password</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete={needsSetup ? "new-password" : "current-password"}
+              required
+              minLength={8}
+            />
+            {needsSetup && <span className="help">At least 8 characters.</span>}
+          </label>
+          {error && <div className="notice notice-bad">{error}</div>}
+          <button type="submit" className="btn btn-primary" style={{ justifyContent: "center" }} disabled={busy}>
+            {busy ? "Working…" : needsSetup ? "Create account" : "Sign in"}
+          </button>
+        </div>
       </form>
     </div>
   );

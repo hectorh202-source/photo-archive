@@ -2,10 +2,17 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 
-// One job, pulled on demand — the errand that comes in by phone ("send the
-// adjuster the pictures from the Whitfield job") rather than as a project.
+// One job, on demand — the phone-call errand: "send the adjuster the photos
+// from the Whitfield job." Look it up, confirm it is the right one, download.
 
 type Mode = "full" | "photos" | "attachments" | "records";
+
+const MODE_LABEL: Record<Mode, string> = {
+  photos: "Photos only",
+  attachments: "Photos and documents",
+  full: "Everything, records included",
+  records: "Records only, no files",
+};
 
 interface PreviewAttachment {
   index: number;
@@ -75,7 +82,7 @@ export function JobTab({ clientId }: { clientId: number }) {
       const warnings = Number(res.headers.get("X-Export-Warnings") ?? "0");
       setNotice(
         warnings > 0
-          ? `Downloaded. ${warnings} item${warnings === 1 ? "" : "s"} couldn't be pulled — see manifest.json inside.`
+          ? `Downloaded. ${warnings} item${warnings === 1 ? "" : "s"} could not be pulled — the manifest inside says which.`
           : "Downloaded.",
       );
     } catch (e) {
@@ -91,119 +98,111 @@ export function JobTab({ clientId }: { clientId: number }) {
   const skipped = attachments.length - shown.length;
 
   return (
-    <div className="stack">
+    <>
       <div className="card">
-        <form
-          className="row"
-          style={{ alignItems: "flex-end" }}
-          onSubmit={(e) => {
-            e.preventDefault();
-            setNotice("");
-            setError("");
-            setLookedUp(reference.trim());
-          }}
-        >
-          <label className="field" style={{ flex: "1 1 14rem" }}>
-            Job number or job ID
-            <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="e.g. 89496" maxLength={24} />
-          </label>
-          <label className="field">
-            Include
-            <select value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
-              <option value="photos">Photos only</option>
-              <option value="attachments">All attachments (photos + PDFs)</option>
-              <option value="full">Everything, records included</option>
-              <option value="records">Records only (no files)</option>
-            </select>
-          </label>
-          <button type="submit" className="btn btn-primary" disabled={reference.trim() === "" || preview.isFetching}>
-            {preview.isFetching ? "Looking up…" : "Look up job"}
-          </button>
-        </form>
-        <p className="hint" style={{ marginTop: ".7rem" }}>
-          The number on a ServiceTitan job screen is the job number, which is not the job ID — either works, and the
-          match is shown before you download. Photos are renamed for the customer and the job's date.
-        </p>
+        <div className="card-head">
+          <h2>Find a job</h2>
+        </div>
+        <div className="card-body">
+          <form
+            className="row"
+            style={{ alignItems: "flex-end", gap: "1rem" }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              setNotice("");
+              setError("");
+              setLookedUp(reference.trim());
+            }}
+          >
+            <label className="field" style={{ flex: "1 1 15rem" }}>
+              <span>Job number</span>
+              <input
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                placeholder="e.g. 89496"
+                maxLength={24}
+              />
+            </label>
+            <label className="field" style={{ flex: "0 1 18rem" }}>
+              <span>Include</span>
+              <select value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
+                {(Object.keys(MODE_LABEL) as Mode[]).map((key) => (
+                  <option key={key} value={key}>{MODE_LABEL[key]}</option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" className="btn btn-primary" disabled={reference.trim() === "" || preview.isFetching}>
+              {preview.isFetching ? "Looking…" : "Look up"}
+            </button>
+          </form>
+          <p className="tiny">
+            The number on a ServiceTitan job screen is the job number, which is not the same as the job ID — either one
+            works here, and the result says which it matched.
+          </p>
+        </div>
       </div>
 
-      {preview.isError && <div className="flash flash-error">{(preview.error as Error).message}</div>}
+      {preview.isError && <div className="notice notice-bad">{(preview.error as Error).message}</div>}
 
       {data && (
         <div className="card">
           <div className="card-head">
-            <strong>Job {data.jobNumber ? `#${data.jobNumber}` : data.jobId}</strong>
-            {data.jobStatus && <span className="badge">{data.jobStatus}</span>}
-            <span className="muted" style={{ fontSize: ".8rem" }}>
-              matched by job {data.matchedBy === "id" ? "ID" : "number"} · id {data.jobId}
-            </span>
+            <h2>Job {data.jobNumber ? `#${data.jobNumber}` : data.jobId}</h2>
+            {data.jobStatus && <span className="pill">{data.jobStatus}</span>}
+            <span className="tiny">matched by job {data.matchedBy === "id" ? "ID" : "number"} · id {data.jobId}</span>
           </div>
+          <div className="card-body">
+            <div>
+              <div style={{ fontWeight: 600 }}>{data.customerName ?? "Customer unknown"}</div>
+              {data.locationAddress && <div className="sub">{data.locationAddress}</div>}
+            </div>
+            {data.summary && <p className="sub">{data.summary}</p>}
 
-          {data.summary && <p style={{ marginBottom: ".7rem" }}>{data.summary}</p>}
-          <p className="hint">
-            {data.customerName ?? "—"}
-            {data.locationAddress ? ` · ${data.locationAddress}` : ""}
-          </p>
+            <div className="stats">
+              <div className="stat">
+                <div className="stat-value">{shown.length}</div>
+                <div className="stat-label">{mode === "photos" ? "photos" : "files"} to download</div>
+              </div>
+              {skipped > 0 && (
+                <div className="stat">
+                  <div className="stat-value">{skipped}</div>
+                  <div className="stat-label">documents skipped in this mode</div>
+                </div>
+              )}
+              {mode !== "photos" && mode !== "attachments" && (
+                <div className="stat">
+                  <div className="stat-value">{data.parts.filter((p) => p.status === "ok").length}</div>
+                  <div className="stat-label">record sets included</div>
+                </div>
+              )}
+            </div>
 
-          <div className="table-scroll" style={{ marginTop: ".9rem" }}>
-            <table>
-              <tbody>
-                {mode !== "photos" && mode !== "attachments" &&
-                  data.parts.map((part) => (
-                    <tr key={part.file}>
-                      <td>
-                        {part.label}
-                        {part.error && <div className="muted" style={{ fontSize: ".8rem" }}>{part.error}</div>}
-                      </td>
-                      <td>
-                        {part.count !== null && part.status !== "failed" && (
-                          <span className="num muted" style={{ marginRight: ".6rem" }}>{part.count}</span>
-                        )}
-                        <span className={`badge ${part.status === "ok" ? "badge-ok" : part.status === "failed" ? "badge-bad" : ""}`}>
-                          {part.status === "ok" ? "included" : part.status === "failed" ? "failed" : "none"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                {mode !== "records" && (
-                  <tr>
-                    <td>
-                      {mode === "photos" ? "Photos" : "Photos & attachments"}
-                      {data.attachmentsError && (
-                        <div className="muted" style={{ fontSize: ".8rem" }}>{data.attachmentsError}</div>
-                      )}
-                      {skipped > 0 && (
-                        <div className="muted" style={{ fontSize: ".8rem" }}>
-                          {skipped} non-image file{skipped === 1 ? "" : "s"} skipped in this mode
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <span className="num muted" style={{ marginRight: ".6rem" }}>{shown.length}</span>
-                      <span className={`badge ${data.attachmentsError ? "badge-bad" : shown.length > 0 ? "badge-ok" : ""}`}>
-                        {data.attachmentsError ? "failed" : shown.length > 0 ? "included" : "none"}
-                      </span>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            {data.attachmentsError && <div className="notice notice-bad">{data.attachmentsError}</div>}
+
+            {data.warnings.length > 0 && (
+              <div className="notice notice-warn">
+                <div>{data.warnings.map((w, i) => <div key={i}>{w}</div>)}</div>
+              </div>
+            )}
           </div>
-
-          {data.warnings.length > 0 && (
-            <ul className="hint" style={{ marginTop: ".8rem", paddingLeft: "1.1rem" }}>
-              {data.warnings.map((w, i) => <li key={i}>{w}</li>)}
-            </ul>
-          )}
-
-          <div className="row" style={{ marginTop: "1rem" }}>
+          <div className="card-foot">
             <button type="button" className="btn btn-primary" onClick={download} disabled={downloading}>
-              {downloading ? "Building zip…" : mode === "photos" ? "Download photos" : "Download .zip"}
+              {downloading ? "Building zip…" : mode === "photos" ? "Download photos" : "Download zip"}
             </button>
-            {notice && <span className="muted">{notice}</span>}
-            {error && <span className="muted">{error}</span>}
+            {notice && <span className="sub">{notice}</span>}
+            {error && <span className="sub">{error}</span>}
           </div>
         </div>
       )}
-    </div>
+
+      {!data && !preview.isError && (
+        <div className="card">
+          <div className="empty">
+            <h3>Nothing looked up yet</h3>
+            <p>Enter a job number above. You will see the customer and how many photos exist before downloading anything.</p>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, daysUntil, type Client } from "../api";
 import { ArchiveTab } from "./ArchiveTab";
@@ -8,60 +8,70 @@ import { SettingsTab } from "./SettingsTab";
 
 type Tab = "archive" | "job" | "settings";
 
+const TAB_LABEL: Record<Tab, string> = {
+  archive: "Photo archive",
+  job: "One job",
+  settings: "Settings",
+};
+
 export function ClientPage() {
   const { clientId } = useParams();
-  const [tab, setTab] = useState<Tab>("archive");
+  const [params] = useSearchParams();
+  const [tab, setTab] = useState<Tab>(params.get("tab") === "settings" ? "settings" : "archive");
 
   const { data: client, isLoading } = useQuery({
     queryKey: ["client", clientId],
     queryFn: () => api.get<Client>(`/api/clients/${clientId}`),
   });
 
-  if (isLoading) return <p className="muted">Loading…</p>;
-  if (!client) return <p className="muted">No such client.</p>;
+  if (isLoading) return <div className="page-body muted">Loading…</div>;
+  if (!client) return <div className="page-body muted">No such client.</div>;
 
   const days = daysUntil(client.cutoverDate);
 
   return (
-    <div className="stack">
-      <div className="row">
-        <Link to="/" className="link-btn" style={{ textDecoration: "none" }}>← Clients</Link>
-      </div>
-
-      <div className="row">
-        <h1>{client.name}</h1>
-        <span className={`badge ${client.serviceTitanConfigured ? "badge-ok" : "badge-warn"}`}>
-          {client.serviceTitanConfigured ? "connected" : "needs credentials"}
-        </span>
-        {days !== null && (
-          <span className={`badge ${days < 0 ? "badge-bad" : days < 60 ? "badge-warn" : ""}`}>
-            {days < 0 ? `cutover passed ${Math.abs(days)}d ago` : `${days} days to cutover`}
+    <>
+      <div className="page-head">
+        <div className="row">
+          <h1>{client.name}</h1>
+          <span className={`pill ${client.serviceTitanConfigured ? "pill-ok" : "pill-warn"}`}>
+            {client.serviceTitanConfigured ? "Connected" : "Needs credentials"}
           </span>
-        )}
-      </div>
-
-      {!client.serviceTitanConfigured && (
-        <div className="flash flash-error">
-          This client has no ServiceTitan credentials yet. Add them on the Settings tab — nothing else here can run
-          without them.
+          {days !== null &&
+            (days < 0 ? (
+              <span className="pill pill-bad">Cutover passed {Math.abs(days)} days ago</span>
+            ) : (
+              <span className={`pill ${days < 60 ? "pill-warn" : ""}`}>{days} days to cutover</span>
+            ))}
         </div>
-      )}
+        {client.contactName && <p className="sub">{client.contactName}</p>}
 
-      <div className="tabs">
-        <button type="button" className={`tab ${tab === "archive" ? "active" : ""}`} onClick={() => setTab("archive")}>
-          Archive
-        </button>
-        <button type="button" className={`tab ${tab === "job" ? "active" : ""}`} onClick={() => setTab("job")}>
-          Single job
-        </button>
-        <button type="button" className={`tab ${tab === "settings" ? "active" : ""}`} onClick={() => setTab("settings")}>
-          Settings
-        </button>
+        <div className="tabs" style={{ marginTop: ".6rem" }}>
+          {(Object.keys(TAB_LABEL) as Tab[]).map((key) => (
+            <button key={key} type="button" className={`tab ${tab === key ? "active" : ""}`} onClick={() => setTab(key)}>
+              {TAB_LABEL[key]}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {tab === "archive" && <ArchiveTab clientId={client.id} />}
-      {tab === "job" && <JobTab clientId={client.id} />}
-      {tab === "settings" && <SettingsTab client={client} />}
-    </div>
+      <div className="page-body stack">
+        {!client.serviceTitanConfigured && tab !== "settings" && (
+          <div className="notice notice-warn">
+            <span>
+              This client has no ServiceTitan credentials yet, so nothing here can run.{" "}
+              <button type="button" className="link-btn" onClick={() => setTab("settings")}>
+                Add them on the Settings tab
+              </button>
+              .
+            </span>
+          </div>
+        )}
+
+        {tab === "archive" && <ArchiveTab clientId={client.id} />}
+        {tab === "job" && <JobTab clientId={client.id} />}
+        {tab === "settings" && <SettingsTab client={client} />}
+      </div>
+    </>
   );
 }
